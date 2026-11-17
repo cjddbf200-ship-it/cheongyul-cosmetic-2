@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>문의 관리</title>
+<style>
+:root{--navy:#1e5a8a;--mint:#2bb5a0;--soft:#eaf7f5;--text:#1d2b36;--mute:#5b6b78;--line:#d6e8ec}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;color:var(--text);background:#f6fafb;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding:20px}
+h1{font-size:22px;color:var(--navy);margin:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--navy);background:var(--navy);color:#fff;padding:10px 18px;font-weight:600}
+button.ghost{background:#fff;color:var(--navy)}
+input[type=password]{width:100%;padding:12px 14px;border:1px solid #b9d3da;border-radius:6px;font:inherit;font-size:16px}
+.box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px}
+.login{max-width:380px;margin:12vh auto 0}
+.login label{display:block;font-weight:600;margin:0 0 8px}
+.err{color:#b3261e;min-height:1.5em;margin:10px 0 0;font-size:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 12px}
+.card .meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--mute);font-size:13px;margin-bottom:6px}
+.card .name{font-weight:700;font-size:17px}
+.card .phone{color:var(--navy);font-weight:600}
+.card .msg{white-space:pre-wrap;word-break:break-word;margin:8px 0 12px}
+select{font:inherit;padding:8px 10px;border-radius:6px;border:1px solid #b9d3da;background:#fff}
+.st-신규{border-left:4px solid #e0483e}.st-상담중{border-left:4px solid #e0a800}.st-완료{border-left:4px solid var(--mint)}
+.empty{color:var(--mute);text-align:center;padding:40px 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loginView" class="box login">
+    <h1>문의 관리</h1>
+    <p style="color:var(--mute);margin:8px 0 16px">관리자 비밀번호를 입력해 주세요.</p>
+    <form id="loginForm">
+      <label for="pw">비밀번호</label>
+      <input id="pw" type="password" autocomplete="current-password" required>
+      <div class="err" id="loginErr" role="alert"></div>
+      <button type="submit" id="loginBtn" style="width:100%;margin-top:10px">로그인</button>
+    </form>
+  </div>
+
+  <div id="listView" hidden>
+    <div class="top">
+      <h1>문의 관리 <span id="count" style="font-size:14px;color:var(--mute);font-weight:400"></span></h1>
+      <div style="display:flex;gap:8px">
+        <button class="ghost" id="refresh">새로고침</button>
+        <button class="ghost" id="logout">로그아웃</button>
+      </div>
+    </div>
+    <div class="err" id="listErr" role="alert"></div>
+    <div id="items"></div>
+  </div>
+</div>
+
+<script>
+var API = "/api/admin";
+var token = "";
+try { token = sessionStorage.getItem("adm") || ""; } catch (e) {}
+
+function el(id){ return document.getElementById(id); }
+function call(payload){
+  return fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)})
+    .then(function(r){ return r.json().then(function(j){ j._status = r.status; return j; }); });
+}
+function show(logged){
+  el("loginView").hidden = logged;
+  el("listView").hidden = !logged;
+}
+function fmt(iso){
+  var d = new Date(iso);
+  if (isNaN(d)) return "";
+  return d.toLocaleString("ko-KR", {timeZone:"Asia/Seoul", hour12:false});
+}
+function render(items){
+  var box = el("items");
+  box.textContent = "";
+  el("count").textContent = "(" + items.length + "건)";
+  if (!items.length){
+    var e = document.createElement("div"); e.className = "empty"; e.textContent = "아직 접수된 문의가 없습니다."; box.appendChild(e); return;
+  }
+  items.forEach(function(it){
+    var c = document.createElement("div"); c.className = "card st-" + it.status;
+    var meta = document.createElement("div"); meta.className = "meta";
+    var a = document.createElement("span"); a.textContent = "#" + it.id + " · " + fmt(it.created_at);
+    meta.appendChild(a);
+    var n = document.createElement("div"); n.className = "name"; n.textContent = it.name;
+    var p = document.createElement("div"); p.className = "phone"; p.textContent = it.phone;
+    var m = document.createElement("div"); m.className = "msg"; m.textContent = it.message;
+    var s = document.createElement("select");
+    ["신규","상담중","완료"].forEach(function(v){
+      var o = document.createElement("option"); o.value = v; o.textContent = v; if (v === it.status) o.selected = true; s.appendChild(o);
+    });
+    s.addEventListener("change", function(){
+      s.disabled = true;
+      call({action:"status", token:token, id:it.id, status:s.value}).then(function(j){
+        s.disabled = false;
+        if (j.ok){ c.className = "card st-" + s.value; it.status = s.value; el("listErr").textContent = ""; }
+        else { el("listErr").textContent = j.error || "변경에 실패했습니다."; s.value = it.status; if (j._status === 401) logout(); }
+      }).catch(function(){ s.disabled = false; s.value = it.status; el("listErr").textContent = "변경에 실패했습니다."; });
+    });
+    c.appendChild(meta); c.appendChild(n); c.appendChild(p); c.appendChild(m); c.appendChild(s);
+    box.appendChild(c);
+  });
+}
+function load(){
+  el("listErr").textContent = "";
+  call({action:"list", token:token}).then(function(j){
+    if (j.ok){ show(true); render(j.items || []); }
+    else { if (j._status === 401){ logout(); } else { show(true); el("listErr").textContent = j.error || "불러오지 못했습니다."; } }
+  }).catch(function(){ show(true); el("listErr").textContent = "불러오지 못했습니다. 잠시 후 다시 시도해 주세요."; });
+}
+function logout(){
+  token = ""; try { sessionStorage.removeItem("adm"); } catch (e) {}
+  show(false); el("pw").value = "";
+}
+el("loginForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var pw = el("pw").value;
+  if (!pw) return;
+  el("loginBtn").disabled = true; el("loginErr").textContent = "";
+  call({action:"login", password:pw}).then(function(j){
+    el("loginBtn").disabled = false;
+    if (j.ok && j.token){
+      token = j.token; try { sessionStorage.setItem("adm", token); } catch (x) {}
+      el("pw").value = ""; load();
+    } else { el("loginErr").textContent = j.error || "로그인에 실패했습니다."; }
+  }).catch(function(){ el("loginBtn").disabled = false; el("loginErr").textContent = "연결에 실패했습니다."; });
+});
+el("refresh").addEventListener("click", load);
+el("logout").addEventListener("click", logout);
+if (token) load(); else show(false);
+</script>
+</body>
+</html>
