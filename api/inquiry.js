@@ -75,10 +75,7 @@ module.exports = async (req, res) => {
       headers: { ...sbHeaders, Prefer: 'return=minimal' },
       body: JSON.stringify({ name: safe(name), phone: safe(phone), message: safe(message), status: '신규' }),
     });
-    if (!insertRes.ok) {
-      const detail = (await insertRes.text()).slice(0, 200);
-      return res.status(500).json({ ok: false, error: '저장 오류 ' + insertRes.status + ' ' + detail });
-    }
+    if (!insertRes.ok) throw new Error('save failed');
 
     if (RESEND_API_KEY && NOTIFY_EMAIL) {
       try {
@@ -101,6 +98,6 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({ ok: true });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: '접수 중 문제가 발생했습니다: ' + String(e && e.message).slice(0, 150) });
+    return res.status(500).json({ ok: false, error: '접수 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.' });
   }
 };
