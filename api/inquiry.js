@@ -50,11 +50,11 @@ module.exports = async (req, res) => {
   if (phone.length > MAX_PHONE) return res.status(400).json({ ok: false, error: '연락처는 ' + MAX_PHONE + '자까지 입력할 수 있습니다.' });
   if (message.length > MAX_MESSAGE) return res.status(400).json({ ok: false, error: '문의 내용은 ' + MAX_MESSAGE + '자까지 입력할 수 있습니다.' });
 
-  const sbHeaders = {
-    apikey: SUPABASE_SERVICE_ROLE_KEY,
-    Authorization: 'Bearer ' + SUPABASE_SERVICE_ROLE_KEY,
-    'Content-Type': 'application/json',
-  };
+  // 새 방식 열쇠(sb_secret_...)는 apikey 칸에만 넣고, 예전 방식(JWT)은 Authorization 에도 넣음
+  const sbHeaders = { apikey: SUPABASE_SERVICE_ROLE_KEY, 'Content-Type': 'application/json' };
+  if (!SUPABASE_SERVICE_ROLE_KEY.startsWith('sb_')) {
+    sbHeaders.Authorization = 'Bearer ' + SUPABASE_SERVICE_ROLE_KEY;
+  }
 
   try {
     // 하루 접수 한도 (한국 시간 기준 오늘 0시부터)
