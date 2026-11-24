@@ -19,7 +19,7 @@ input[type=password]{width:100%;padding:12px 14px;border:1px solid #b9d3da;borde
 .login{max-width:380px;margin:12vh auto 0}
 .login label{display:block;font-weight:600;margin:0 0 8px}
 .err{color:#b3261e;min-height:1.5em;margin:10px 0 0;font-size:14px}
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin:0}
 .card .meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--mute);font-size:13px;margin-bottom:6px}
 .card .name{font-weight:700;font-size:17px}
 .card .phone{color:var(--navy);font-weight:600}
@@ -27,6 +27,10 @@ input[type=password]{width:100%;padding:12px 14px;border:1px solid #b9d3da;borde
 select{font:inherit;padding:8px 10px;border-radius:6px;border:1px solid #b9d3da;background:#fff}
 .st-신규{border-left:4px solid #e0483e}.st-상담중{border-left:4px solid #e0a800}.st-완료{border-left:4px solid var(--mint)}
 .empty{color:var(--mute);text-align:center;padding:40px 0}
+#items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#items .empty{grid-column:1/-1}
+@media (max-width:640px){#items{grid-template-columns:1fr}}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -90,7 +94,7 @@ function render(items){
     var n = document.createElement("div"); n.className = "name"; n.textContent = it.name;
     var p = document.createElement("div"); p.className = "phone"; p.textContent = it.phone;
     var m = document.createElement("div"); m.className = "msg"; m.textContent = it.message;
-    var s = document.createElement("select");
+    var s = document.createElement("select"); s.setAttribute("aria-label", "문의 상태 변경");
     ["신규","상담중","완료"].forEach(function(v){
       var o = document.createElement("option"); o.value = v; o.textContent = v; if (v === it.status) o.selected = true; s.appendChild(o);
     });
