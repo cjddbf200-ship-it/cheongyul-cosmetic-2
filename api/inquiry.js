@@ -40,8 +40,10 @@ module.exports = async (req, res) => {
   // 자동 등록(스팸) 차단: 숨은 칸이 채워져 있으면 조용히 성공으로 응답하고 저장하지 않음
   if (clean(body.website) !== '') return res.status(200).json({ ok: true });
 
-  const name = clean(body.name);
-  const phone = clean(body.phone);
+  if (body.agree !== true) return res.status(400).json({ ok: false, error: '개인정보 수집·이용에 동의해 주세요.' });
+
+  const name = clean(body.name).replace(/[\r\n]+/g, ' ');
+  const phone = clean(body.phone).replace(/[\r\n]+/g, ' ');
   const message = clean(body.message);
   if (!name) return res.status(400).json({ ok: false, error: '이름을 입력해 주세요.' });
   if (!phone) return res.status(400).json({ ok: false, error: '연락처를 입력해 주세요.' });
